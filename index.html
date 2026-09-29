@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNA Gel Electrophoresis Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: #e2e8f0; /* slate-200 */
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .glass-panel {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Toggle Switch Styling */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #475569;
+            transition: .4s;
+            border-radius: 34px;
+            border: 2px solid #334155;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #06b6d4; border-color: #0891b2; }
+        input:checked + .slider.blue-slider { background-color: #3b82f6; border-color: #2563eb; }
+        input:checked + .slider.indigo-slider { background-color: #6366f1; border-color: #4f46e5; }
+        input:checked + .slider.green-slider { background-color: #22c55e; border-color: #16a34a; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            margin-top: -8px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 3px;
+        }
+
+        /* Sim 2 Animations */
+        .sim2-dna {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: top 4s linear;
+        }
+        .sim2-running #s2-dna-1 { top: 75% !important; }
+        .sim2-running #s2-dna-2 { top: 60% !important; }
+
+        /* Sim 3 Animations */
+        .gel-band-s3 {
+            width: 36px;
+            height: 6px;
+            border-radius: 2px;
+            margin: 0 auto;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: top 5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .sim3-running #s3-band-long { top: 25% !important; }
+        .sim3-running #s3-band-med { top: 55% !important; }
+        .sim3-running #s3-band-short { top: 85% !important; } /* Stops before running out */
+
+        /* Sim 4 Animations & UV Effects */
+        .uv-chamber { transition: background 0.5s ease; background-color: #1e293b; }
+        .uv-on.uv-chamber { background-color: #050510; box-shadow: inset 0 0 60px rgba(139, 92, 246, 0.3); }
+        
+        /* Sim 4A: Molecular */
+        .dye-free { fill: #064e3b; transition: all 0.3s; opacity: 0.2; }
+        .dye-bound { fill: #064e3b; transition: all 0.3s; opacity: 0.8; }
+        .uv-on .dye-free { fill: #022c22; opacity: 0.1; }
+        .uv-on .dye-bound { 
+            fill: #39ff14; 
+            filter: drop-shadow(0 0 6px #39ff14) drop-shadow(0 0 10px #22c55e); 
+            opacity: 1;
+        }
+        .dna-structure { stroke: #64748b; transition: stroke 0.5s; }
+        .uv-on .dna-structure { stroke: #334155; }
+
+        /* Sim 4B: Macroscopic Gel */
+        .macro-band {
+            width: 40px;
+            height: 6px;
+            border-radius: 2px;
+            background-color: transparent;
+            margin: 0 auto;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.5s ease;
+        }
+        .uv-on .macro-band {
+            background-color: #39ff14;
+            box-shadow: 0 0 12px #39ff14, 0 0 20px #22c55e;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Header -->
+    <header class="w-full bg-slate-900 border-b border-slate-700 py-3 px-6 shadow-md z-10 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <svg class="w-7 h-7 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            <h1 class="text-lg font-bold tracking-wide text-slate-100">Interactive Lab: DNA Gel Electrophoresis</h1>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 relative p-4 md:p-6 w-full max-w-7xl mx-auto overflow-hidden flex flex-col">
+
+        <div id="view-dashboard" class="w-full h-full grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-center">
+            
+            <!-- Card 1 -->
+            <div onclick="openSim('sim1')" class="glass-panel p-6 cursor-pointer hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-all group flex flex-col items-center justify-center text-center h-full min-h-[250px]">
+                <h2 class="text-xl font-semibold text-cyan-400 mb-4">1. Agarose Gel Mesh</h2>
+                <div class="w-full h-32 bg-slate-800/80 rounded-lg overflow-hidden flex items-center justify-center mb-4 group-hover:scale-105 transition duration-300 border border-slate-700 shadow-inner relative">
+                    <svg viewBox="0 0 300 120" class="w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300 preserve-3d">
+                        <rect width="300" height="120" fill="#0f172a"/>
+                        <!-- Microscopic Mesh -->
+                        <g stroke="#94a3b8" stroke-width="4" fill="none" opacity="0.5">
+                            <path d="M-10,20 Q40,50 60,-10 M30,130 Q80,70 150,140 M100,-20 Q120,60 200,-10 M140,140 Q180,60 250,130 M220,-10 Q260,80 320,20 M-20,70 Q50,90 80,40 Q130,50 160,90 Q220,110 270,50 Q310,70 320,60" />
+                            <path d="M20,10 Q60,80 120,30 Q170,90 220,40 Q280,100 320,30" stroke-width="6"/>
+                            <path d="M40,110 Q90,30 150,100 Q210,20 280,90" stroke-width="5"/>
+                        </g>
+                        <!-- Magnifying Glass -->
+                        <circle cx="150" cy="60" r="30" stroke="#06b6d4" stroke-width="4" fill="#06b6d4" fill-opacity="0.15"/>
+                        <circle cx="150" cy="60" r="22" stroke="#0891b2" stroke-width="2" fill="none"/>
+                        <!-- Handle -->
+                        <line x1="172" y1="82" x2="198" y2="108" stroke="#06b6d4" stroke-width="10" stroke-linecap="round"/>
+                        <!-- Cursor -->
+                        <polygon points="195,95 215,115 200,120" fill="#e2e8f0"/>
+                    </svg>
+                </div>
+                <p class="text-sm text-slate-400 mt-2">Explore the microscopic structure.</p>
+            </div>
+
+            <!-- Card 2 -->
+            <div onclick="openSim('sim2')" class="glass-panel p-6 cursor-pointer hover:border-blue-500/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-all group flex flex-col items-center justify-center text-center h-full min-h-[250px]">
+                <h2 class="text-xl font-semibold text-blue-400 mb-4">2. Electrical Current</h2>
+                <div class="w-full h-32 bg-slate-800/80 rounded-lg overflow-hidden flex items-center justify-center mb-4 group-hover:scale-105 transition duration-300 border border-slate-700 shadow-inner">
+                    <svg viewBox="0 0 300 120" class="w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                        <rect width="300" height="120" fill="#0f172a"/>
+                        <!-- Helix 1 -->
+                        <g transform="translate(30, 10) scale(0.6)">
+                            <path d="M10,20 C40,50 40,70 10,100" fill="none" stroke="#60a5fa" stroke-width="5"/>
+                            <path d="M70,20 C40,50 40,70 70,100" fill="none" stroke="#fb923c" stroke-width="5"/>
+                            <line x1="24" y1="36" x2="56" y2="36" stroke="white" stroke-width="3"/><line x1="16" y1="60" x2="64" y2="60" stroke="white" stroke-width="3"/><line x1="24" y1="84" x2="56" y2="84" stroke="white" stroke-width="3"/>
+                            <circle cx="10" cy="30" r="12" fill="#ef4444"/><text x="10" y="36" fill="white" font-size="18" text-anchor="middle" font-weight="bold">-</text>
+                        </g>
+                        <!-- Helix 2 -->
+                        <g transform="translate(130, 40) scale(0.55) rotate(30)">
+                            <path d="M10,20 C40,50 40,70 10,100" fill="none" stroke="#60a5fa" stroke-width="5"/>
+                            <path d="M70,20 C40,50 40,70 70,100" fill="none" stroke="#fb923c" stroke-width="5"/>
+                            <line x1="24" y1="36" x2="56" y2="36" stroke="white" stroke-width="3"/><line x1="16" y1="60" x2="64" y2="60" stroke="white" stroke-width="3"/><line x1="24" y1="84" x2="56" y2="84" stroke="white" stroke-width="3"/>
+                            <circle cx="70" cy="90" r="14" fill="#ef4444"/><text x="70" y="96" fill="white" font-size="20" text-anchor="middle" font-weight="bold">-</text>
+                        </g>
+                        <!-- Helix 3 -->
+                        <g transform="translate(220, 5) scale(0.65) rotate(-20)">
+                            <path d="M10,20 C40,50 40,70 10,100" fill="none" stroke="#60a5fa" stroke-width="5"/>
+                            <path d="M70,20 C40,50 40,70 70,100" fill="none" stroke="#fb923c" stroke-width="5"/>
+                            <line x1="24" y1="36" x2="56" y2="36" stroke="white" stroke-width="3"/><line x1="16" y1="60" x2="64" y2="60" stroke="white" stroke-width="3"/><line x1="24" y1="84" x2="56" y2="84" stroke="white" stroke-width="3"/>
+                            <circle cx="10" cy="90" r="10" fill="#ef4444"/><text x="10" y="95" fill="white" font-size="14" text-anchor="middle" font-weight="bold">-</text>
+                        </g>
+                        <text x="150" y="110" fill="#cbd5e1" font-size="12" text-anchor="middle" font-weight="600">Negatively charged DNA (-)</text>
+                    </svg>
+                </div>
+                <p class="text-sm text-slate-400 mt-2">See how charge drives DNA movement.</p>
+            </div>
+
+            <!-- Card 3 -->
+            <div onclick="openSim('sim3')" class="glass-panel p-6 cursor-pointer hover:border-indigo-500/50 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition-all group flex flex-col items-center justify-center text-center h-full min-h-[250px]">
+                <h2 class="text-xl font-semibold text-indigo-400 mb-4">3. Behaviour & Separation</h2>
+                <div class="w-full h-32 bg-slate-800/80 rounded-lg overflow-hidden flex items-center justify-center mb-4 group-hover:scale-105 transition duration-300 border border-slate-700 shadow-inner">
+                    <svg viewBox="0 0 300 120" class="w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                        <rect width="300" height="120" fill="#0f172a"/>
+                        <!-- Gauge -->
+                        <g transform="translate(220, 65)">
+                            <path d="M-40,0 A40,40 0 0,1 -15,-35" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="butt"/>
+                            <path d="M-15,-35 A40,40 0 0,1 15,-35" fill="none" stroke="#eab308" stroke-width="12" stroke-linecap="butt"/>
+                            <path d="M15,-35 A40,40 0 0,1 40,0" fill="none" stroke="#22c55e" stroke-width="12" stroke-linecap="butt"/>
+                            <circle cx="0" cy="0" r="8" fill="#94a3b8"/>
+                            <polygon points="-4,-4 4,4 -25,-25" fill="#e2e8f0" transform="rotate(20)"/>
+                        </g>
+                        <text x="220" y="95" fill="#f8fafc" font-size="12" text-anchor="middle" font-weight="bold">Distance Travelled</text>
+                        <!-- Large DNA -->
+                        <g transform="translate(20, 10)" stroke="#d8b4fe" fill="none" stroke-width="2.5">
+                            <path d="M0,15 Q10,0 20,20 T40,15 T35,45 T10,35 T0,15" />
+                            <path d="M5,20 Q20,35 15,10 T40,25 T20,50" />
+                        </g>
+                        <text x="75" y="40" fill="#cbd5e1" font-size="11">Large Fragments</text>
+                        <!-- Small DNA -->
+                        <g transform="translate(20, 75)" stroke="#a855f7" fill="none" stroke-width="2.5">
+                            <path d="M0,10 Q5,0 10,10 T20,10" />
+                            <path d="M25,20 Q30,10 35,20 T45,20" />
+                            <path d="M0,30 Q5,40 10,30 T20,30" />
+                        </g>
+                        <text x="75" y="95" fill="#cbd5e1" font-size="11">Small Fragments</text>
+                    </svg>
+                </div>
+                <p class="text-sm text-slate-400 mt-2">Discover how sizes separate in the gel.</p>
+            </div>
+
+            <!-- Card 4 -->
+            <div onclick="openSim('sim4')" class="glass-panel p-6 cursor-pointer hover:border-green-500/50 hover:shadow-[0_0_15px_rgba(34,197,94,0.2)] transition-all group flex flex-col items-center justify-center text-center h-full min-h-[250px]">
+                <h2 class="text-xl font-semibold text-green-400 mb-4">4. SYBR Green Visualisation</h2>
+                <div class="w-full h-32 bg-slate-800/80 rounded-lg overflow-hidden flex items-center justify-center mb-4 group-hover:scale-105 transition duration-300 border border-slate-700 shadow-inner">
+                    <svg viewBox="0 0 300 120" class="w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                        <rect width="300" height="120" fill="#0f172a"/>
+                        <!-- UV Glow -->
+                        <ellipse cx="150" cy="65" rx="100" ry="40" fill="#7e22ce" opacity="0.4" filter="blur(15px)"/>
+                        <!-- Box Base -->
+                        <polygon points="60,95 240,95 220,115 80,115" fill="#1e1b4b"/>
+                        <!-- Box Hood -->
+                        <polygon points="70,30 230,30 240,95 60,95" fill="#2e1065"/>
+                        <polygon points="80,10 220,10 230,30 70,30" fill="#4c1d95"/>
+                        <!-- Gel Area -->
+                        <polygon points="85,90 215,90 200,110 100,110" fill="#064e3b" opacity="0.9"/>
+                        <!-- UV Light Fall -->
+                        <polygon points="70,30 230,30 215,90 85,90" fill="#a855f7" opacity="0.25"/>
+                        <!-- Glowing Bands -->
+                        <g fill="#39ff14" opacity="0.9">
+                            <!-- Lane 1 -->
+                            <polygon points="105,94 125,94 122,96 102,96"/>
+                            <polygon points="110,102 130,102 127,104 107,104"/>
+                            <!-- Lane 2 -->
+                            <polygon points="140,97 160,97 157,99 137,99"/>
+                            <polygon points="148,106 168,106 165,108 145,108"/>
+                            <!-- Lane 3 -->
+                            <polygon points="175,92 195,92 192,94 172,94"/>
+                            <polygon points="182,104 202,104 199,106 179,106"/>
+                        </g>
+                    </svg>
+                </div>
+                <p class="text-sm text-slate-400 mt-2">Reveal DNA using intercalating dye & UV.</p>
+            </div>
+        </div>
+
+        <div id="view-sim1" class="hidden w-full h-full flex flex-col">
+            <button onclick="goHome()" class="mb-4 self-start text-slate-400 hover:text-cyan-400 flex items-center gap-2 transition-colors font-medium shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Dashboard
+            </button>
+            <div class="glass-panel flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+                <!-- Interactive Side -->
+                <div class="w-full md:w-1/2 bg-slate-900 border-r border-slate-700 flex flex-col items-center justify-center p-6 relative">
+                    <h3 class="absolute top-4 left-4 text-cyan-400 font-semibold tracking-wide">Microscopic Mesh Simulation</h3>
+                    
+                    <div class="relative w-72 h-72 mt-8 flex justify-center items-center bg-slate-950 border-2 border-cyan-900 rounded-full overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.1)]">
+                        <svg id="agarose-mesh-svg" class="w-full h-full" viewBox="0 0 100 100"></svg>
+                    </div>
+
+                    <div class="mt-8 w-full max-w-xs flex flex-col gap-3 bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <label class="text-sm font-semibold text-slate-200 flex justify-between">
+                            <span>Agarose Concentration:</span>
+                            <span id="conc-display" class="text-cyan-400">1.0%</span>
+                        </label>
+                        <input type="range" id="sim1-slider" min="0.5" max="2.0" step="0.1" value="1.0">
+                        <div class="flex justify-between text-xs text-slate-400">
+                            <span>Low (0.5%)</span>
+                            <span>High (2.0%)</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Explanation Side -->
+                <div class="w-full md:w-1/2 bg-slate-800/50 p-6 md:p-8 flex flex-col justify-center overflow-y-auto">
+                    <h2 class="text-2xl md:text-3xl font-bold text-cyan-400 mb-4">1. Agarose Gel Concentration</h2>
+                    <p class="text-slate-300 leading-relaxed mb-4">
+                        Agarose gel is not a uniform solid; it is a porous matrix acting like a microscopic sieve. By altering the concentration of agarose powder dissolved in the buffer, we can control the structure of this sieve.
+                    </p>
+                    <div class="bg-slate-900 border-l-4 border-cyan-500 p-4 rounded-r-lg mt-2 mb-4 shadow-md">
+                        <ul class="space-y-3 text-sm text-slate-300">
+                            <li><strong class="text-cyan-300">Lower Concentration (e.g. 0.5%):</strong> Creates a loose matrix with large pores. Ideal for separating very large DNA fragments, as they can navigate the loose mesh.</li>
+                            <li><strong class="text-cyan-300">Higher Concentration (e.g. 2.0%):</strong> Creates a dense, tight matrix with very small pores. Essential for separating small DNA fragments, providing enough friction to resolve slight size differences.</li>
+                        </ul>
+                    </div>
+                    <p class="text-slate-400 text-sm italic">
+                        Use the slider to see how increasing the concentration dynamically shrinks the pore sizes in the microscopic network.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-sim2" class="hidden w-full h-full flex flex-col">
+            <button onclick="goHome()" class="mb-4 self-start text-slate-400 hover:text-blue-400 flex items-center gap-2 transition-colors font-medium shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Dashboard
+            </button>
+            <div class="glass-panel flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+                <!-- Interactive Side -->
+                <div class="w-full md:w-1/2 bg-slate-900 border-r border-slate-700 flex flex-col items-center justify-center p-6 relative">
+                    <div class="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                        <h3 class="text-blue-400 font-semibold tracking-wide">Current Flow Simulation</h3>
+                        <div class="flex items-center gap-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shadow-md">
+                            <span class="text-sm font-medium text-slate-200">Power Supply</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sim2-toggle">
+                                <span class="slider blue-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Gel Tank Top-Down -->
+                    <div id="sim2-tank" class="relative w-56 h-[340px] bg-slate-800 border-4 border-slate-600 rounded-lg mt-8 overflow-hidden shadow-2xl flex flex-col">
+                        <!-- Cathode -->
+                        <div class="h-12 w-full bg-slate-900 border-b-2 border-slate-500 flex flex-col items-center justify-center z-10 shadow-md">
+                            <span class="font-bold text-slate-300 text-sm">Cathode</span>
+                            <span class="font-bold text-slate-400 text-xs">(-) Negative</span>
+                        </div>
+                        
+                        <!-- Gel Area -->
+                        <div class="flex-1 relative w-full overflow-hidden bg-[#1e293b]">
+                            <!-- DNA Helix 1 (Rotated 90 degrees) -->
+                            <!-- Note: The SVG is drawn natively vertical so rungs are horizontal -->
+                            <svg id="s2-dna-1" class="sim2-dna w-14 h-24 top-[5%]" viewBox="0 0 40 100">
+                                <path d="M5,10 C20,25 20,35 5,50 C-10,65 -10,75 5,90" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
+                                <path d="M35,10 C20,25 20,35 35,50 C50,65 50,75 35,90" fill="none" stroke="#818cf8" stroke-width="2.5"/>
+                                <line x1="12" y1="18" x2="28" y2="18" stroke="white" stroke-width="1.5"/>
+                                <line x1="8" y1="42" x2="32" y2="42" stroke="white" stroke-width="1.5"/>
+                                <line x1="12" y1="58" x2="28" y2="58" stroke="white" stroke-width="1.5"/>
+                                <line x1="8" y1="82" x2="32" y2="82" stroke="white" stroke-width="1.5"/>
+                                <!-- Minus signs on backbone -->
+                                <circle cx="5" cy="15" r="5" fill="#ef4444"/><text x="5" y="18" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                                <circle cx="35" cy="45" r="5" fill="#ef4444"/><text x="35" y="48" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                                <circle cx="5" cy="85" r="5" fill="#ef4444"/><text x="5" y="88" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                            </svg>
+
+                            <!-- DNA Helix 2 -->
+                            <svg id="s2-dna-2" class="sim2-dna w-14 h-24 top-[20%]" viewBox="0 0 40 100" style="transition-delay: 0.1s;">
+                                <path d="M5,10 C20,25 20,35 5,50 C-10,65 -10,75 5,90" fill="none" stroke="#60a5fa" stroke-width="2.5"/>
+                                <path d="M35,10 C20,25 20,35 35,50 C50,65 50,75 35,90" fill="none" stroke="#818cf8" stroke-width="2.5"/>
+                                <line x1="12" y1="18" x2="28" y2="18" stroke="white" stroke-width="1.5"/>
+                                <line x1="8" y1="42" x2="32" y2="42" stroke="white" stroke-width="1.5"/>
+                                <line x1="12" y1="58" x2="28" y2="58" stroke="white" stroke-width="1.5"/>
+                                <line x1="8" y1="82" x2="32" y2="82" stroke="white" stroke-width="1.5"/>
+                                <circle cx="35" cy="15" r="5" fill="#ef4444"/><text x="35" y="18" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                                <circle cx="5" cy="45" r="5" fill="#ef4444"/><text x="5" y="48" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                                <circle cx="35" cy="85" r="5" fill="#ef4444"/><text x="35" y="88" fill="white" font-size="8" text-anchor="middle" font-weight="bold">-</text>
+                            </svg>
+                        </div>
+
+                        <!-- Anode -->
+                        <div class="h-12 w-full bg-red-900/30 border-t-2 border-red-800 flex flex-col items-center justify-center z-10 shadow-md">
+                            <span class="font-bold text-red-400 text-sm">Anode</span>
+                            <span class="font-bold text-red-500 text-xs">(+) Positive</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Explanation Side -->
+                <div class="w-full md:w-1/2 bg-slate-800/50 p-6 md:p-8 flex flex-col justify-center overflow-y-auto">
+                    <h2 class="text-2xl md:text-3xl font-bold text-blue-400 mb-4">2. Electrical Current & DNA</h2>
+                    <p class="text-slate-300 leading-relaxed mb-6">
+                        Gel electrophoresis uses an electrical field to push molecules through the gel matrix. The direction of movement is dictated entirely by the inherent electrical charge of the molecules.
+                    </p>
+                    
+                    <div class="bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6 shadow-inner">
+                        <h4 class="text-sm font-semibold text-slate-200 mb-3 border-b border-slate-700 pb-2">The Motive Force: Repulsion and Attraction</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed">
+                            DNA is fundamentally a <strong>negatively charged</strong> molecule. When placed in the electric field, it is repelled by the negative <strong class="text-slate-400">Cathode (-)</strong> and strongly attracted towards the positive <strong class="text-red-400">Anode (+)</strong>. This creates a unidirectional flow from one end of the tank to the other.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-sim3" class="hidden w-full h-full flex flex-col">
+            <button onclick="goHome()" class="mb-4 self-start text-slate-400 hover:text-indigo-400 flex items-center gap-2 transition-colors font-medium shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Dashboard
+            </button>
+            <div class="glass-panel flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+                <!-- Interactive Side -->
+                <div class="w-full md:w-1/2 bg-slate-900 border-r border-slate-700 flex flex-col items-center justify-center p-6 relative">
+                    <div class="absolute top-4 left-4 flex flex-col gap-2 z-10">
+                        <h3 class="text-indigo-400 font-semibold tracking-wide">Separation Simulation</h3>
+                        <div class="flex items-center gap-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shadow-md">
+                            <span class="text-sm font-medium text-slate-200">Run Gel</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sim3-toggle">
+                                <span class="slider indigo-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-8 items-center h-full pt-16">
+                        <!-- Legend -->
+                        <div class="flex flex-col gap-4 text-xs font-semibold bg-slate-800/80 p-4 rounded-lg border border-slate-700 shadow-lg">
+                            <div class="flex items-center gap-3"><div class="w-6 h-1.5 bg-[#d8b4fe] rounded"></div><span class="text-slate-300">Long Fragments</span></div>
+                            <div class="flex items-center gap-3"><div class="w-6 h-1.5 bg-[#c084fc] rounded"></div><span class="text-slate-300">Medium Fragments</span></div>
+                            <div class="flex items-center gap-3"><div class="w-6 h-1.5 bg-[#a855f7] rounded"></div><span class="text-slate-300">Short Fragments</span></div>
+                        </div>
+
+                        <!-- Gel Track -->
+                        <div id="sim3-track" class="relative w-28 h-[340px] bg-[#1e293b] border-2 border-[#334155] rounded-lg flex flex-col shadow-inner overflow-hidden">
+                            <!-- Cathode Label inside track area for alignment -->
+                            <div class="w-full text-center py-2 bg-slate-900 border-b border-slate-600 text-[11px] text-slate-300 font-bold z-10 shadow-sm">Cathode (-)</div>
+                            
+                            <!-- Well -->
+                            <div class="absolute top-12 left-1/2 -translate-x-1/2 w-16 h-4 bg-slate-950 border border-slate-700 rounded-sm z-0 flex items-center justify-center">
+                                <span class="text-[8px] text-slate-500">WELL</span>
+                            </div>
+
+                            <!-- DNA Bands -->
+                            <div id="s3-band-long" class="gel-band-s3 top-[13%]" style="background-color: #d8b4fe;"></div>
+                            <div id="s3-band-med" class="gel-band-s3 top-[13%]" style="background-color: #c084fc;"></div>
+                            <div id="s3-band-short" class="gel-band-s3 top-[13%]" style="background-color: #a855f7;"></div>
+
+                            <div class="w-full text-center py-2 bg-red-900/30 border-t border-red-800 text-[11px] text-red-400 font-bold absolute bottom-0 z-10 shadow-sm">Anode (+)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Explanation Side -->
+                <div class="w-full md:w-1/2 bg-slate-800/50 p-6 md:p-8 flex flex-col justify-center overflow-y-auto">
+                    <h2 class="text-2xl md:text-3xl font-bold text-indigo-400 mb-4">3. Behaviour & Separation</h2>
+                    <p class="text-slate-300 leading-relaxed mb-4 text-sm md:text-base">
+                        Because the charge-to-mass ratio is uniform across all DNA molecules, separation in the gel is driven entirely by <strong>size (length)</strong>. The agarose mesh acts as a physical obstacle course.
+                    </p>
+                    
+                    <ul class="space-y-3 text-sm text-slate-300 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-inner">
+                        <li class="flex gap-3">
+                            <div class="w-4 h-4 rounded bg-[#d8b4fe] flex-shrink-0 mt-0.5"></div>
+                            <div><strong>Long Fragments:</strong> Get entangled frequently in the matrix pores, increasing friction. They move slowly and stay near the top.</div>
+                        </li>
+                        <li class="flex gap-3">
+                            <div class="w-4 h-4 rounded bg-[#a855f7] flex-shrink-0 mt-0.5"></div>
+                            <div><strong>Short Fragments:</strong> Compact enough to easily weave through the microscopic pores. They encounter less resistance, migrate much faster, and travel further down the gel (but must be stopped before they run out!).</div>
+                        </li>
+                    </ul>
+
+                    <!-- Nucleotide Structural Diagram -->
+                    <div class="mt-2 bg-slate-950 p-4 rounded-lg border border-slate-700 flex flex-col items-center shadow-lg">
+                        <h4 class="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider self-start">Molecular Source of Negative Charge</h4>
+                        <svg viewBox="0 0 250 100" class="w-full max-w-[280px] h-24">
+                            <!-- Bonds -->
+                            <line x1="80" y1="50" x2="120" y2="50" stroke="#94a3b8" stroke-width="3"/>
+                            <line x1="150" y1="50" x2="180" y2="50" stroke="#94a3b8" stroke-width="3"/>
+                            
+                            <!-- Phosphate Group -->
+                            <circle cx="50" cy="50" r="28" fill="#ef4444" stroke="#b91c1c" stroke-width="2"/>
+                            <text x="50" y="55" fill="white" font-size="16" font-weight="bold" text-anchor="middle">PO₄³⁻</text>
+                            <!-- Minus sign highlight -->
+                            <circle cx="20" cy="25" r="12" fill="#0f172a" stroke="white" stroke-width="1.5"/>
+                            <text x="20" y="30" fill="white" font-size="16" font-weight="bold" text-anchor="middle">-</text>
+                            
+                            <!-- Sugar -->
+                            <polygon points="135,30 160,60 145,90 125,90 110,60" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2"/>
+                            <text x="135" y="102" fill="#93c5fd" font-size="12" text-anchor="middle" font-weight="600">Sugar</text>
+                            
+                            <!-- Base -->
+                            <rect x="180" y="30" width="45" height="40" rx="4" fill="#22c55e" stroke="#15803d" stroke-width="2"/>
+                            <text x="202" y="54" fill="white" font-size="12" text-anchor="middle" font-weight="600">Base</text>
+                        </svg>
+                        <p class="text-xs text-slate-400 mt-4 text-center">The uniform negative charge stems from the phosphate group (PO₄³⁻) in the backbone of every nucleotide.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-sim4" class="hidden w-full h-full flex flex-col">
+            <button onclick="goHome()" class="mb-4 self-start text-slate-400 hover:text-green-400 flex items-center gap-2 transition-colors font-medium shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Dashboard
+            </button>
+            <div class="glass-panel flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+                <!-- Interactive Side (Dual Simulation) -->
+                <div id="sim4-chamber" class="w-full md:w-7/12 border-r border-slate-700 flex flex-col relative uv-chamber">
+                    
+                    <!-- Controls -->
+                    <div class="absolute top-4 left-4 flex flex-col gap-2 z-20">
+                        <h3 class="text-green-400 font-semibold tracking-wide bg-slate-900/80 px-2 py-1 rounded">Visualisation Lab</h3>
+                        <div class="flex items-center gap-3 bg-slate-800 p-2 rounded-lg border border-slate-700 shadow-md">
+                            <span class="text-sm font-medium text-slate-200"><i class="fas fa-lightbulb mr-1"></i> Turn on UV Light</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="sim4-toggle">
+                                <span class="slider green-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dual View Container -->
+                    <div class="flex-1 flex flex-row items-center justify-evenly pt-16 pb-4 px-4 gap-4 h-full relative z-10">
+                        
+                        <!-- Sim A: Molecular View -->
+                        <div class="flex flex-col items-center w-1/2">
+                            <span class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wide bg-slate-900/50 px-2 py-1 rounded">Sim A: Molecular Level</span>
+                            <svg viewBox="0 0 200 300" class="w-full max-w-[160px] h-auto">
+                                <!-- Free Floating SYBR -->
+                                <rect x="20" y="40" width="20" height="6" rx="2" class="dye-free" transform="rotate(30 30 43)"/>
+                                <rect x="150" y="60" width="20" height="6" rx="2" class="dye-free" transform="rotate(-20 160 63)"/>
+                                <rect x="30" y="240" width="20" height="6" rx="2" class="dye-free" transform="rotate(60 40 243)"/>
+                                <rect x="160" y="210" width="20" height="6" rx="2" class="dye-free" transform="rotate(-45 170 213)"/>
+
+                                <!-- DNA Helix -->
+                                <path d="M70,20 C40,80 40,140 70,200 C100,260 100,280 70,300" fill="none" stroke-width="4" class="dna-structure"/>
+                                <path d="M130,20 C160,80 160,140 130,200 C100,260 100,280 130,300" fill="none" stroke-width="4" class="dna-structure"/>
+                                
+                                <!-- Normal Rungs -->
+                                <line x1="82" y1="50" x2="118" y2="50" stroke="#64748b" stroke-width="2"/>
+                                <line x1="88" y1="230" x2="112" y2="230" stroke="#64748b" stroke-width="2"/>
+                                <line x1="72" y1="270" x2="128" y2="270" stroke="#64748b" stroke-width="2"/>
+
+                                <!-- Intercalated SYBR (Between Base Pairs) -->
+                                <!-- We draw the rung, then the dye on top to show it slipping between -->
+                                <line x1="58" y1="100" x2="142" y2="100" stroke="#64748b" stroke-width="2"/>
+                                <rect x="75" y="96" width="50" height="8" rx="2" class="dye-bound"/>
+                                
+                                <line x1="58" y1="150" x2="142" y2="150" stroke="#64748b" stroke-width="2"/>
+                                <rect x="80" y="146" width="40" height="8" rx="2" class="dye-bound" transform="rotate(-5 100 150)"/>
+                                
+                                <line x1="70" y1="190" x2="130" y2="190" stroke="#64748b" stroke-width="2"/>
+                                <rect x="85" y="186" width="30" height="8" rx="2" class="dye-bound" transform="rotate(8 100 190)"/>
+                            </svg>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="h-4/5 w-px bg-slate-700/50"></div>
+
+                        <!-- Sim B: Macroscopic Gel View -->
+                        <div class="flex flex-col items-center w-1/2">
+                            <span class="text-xs text-slate-400 font-semibold mb-2 uppercase tracking-wide bg-slate-900/50 px-2 py-1 rounded">Sim B: Macroscopic Gel</span>
+                            <div class="relative w-32 h-64 bg-[#1e293b]/80 border-2 border-[#334155] rounded shadow-inner mt-4 overflow-hidden">
+                                <!-- Wells -->
+                                <div class="flex justify-evenly w-full mt-4">
+                                    <div class="w-6 h-2 bg-slate-900 rounded-sm"></div>
+                                    <div class="w-6 h-2 bg-slate-900 rounded-sm"></div>
+                                </div>
+                                
+                                <!-- Invisible Bands (Appear on UV) -->
+                                <!-- Lane 1 -->
+                                <div class="macro-band top-[20%] left-[25%] w-6"></div>
+                                <div class="macro-band top-[45%] left-[25%] w-6"></div>
+                                <div class="macro-band top-[75%] left-[25%] w-6"></div>
+                                <!-- Lane 2 -->
+                                <div class="macro-band top-[30%] left-[75%] w-6"></div>
+                                <div class="macro-band top-[85%] left-[75%] w-6"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <!-- Explanation Side -->
+                <div class="w-full md:w-5/12 bg-slate-800/50 p-6 md:p-8 flex flex-col justify-center overflow-y-auto">
+                    <h2 class="text-2xl md:text-3xl font-bold text-green-400 mb-4">4. SYBR Green Visualisation</h2>
+                    <p class="text-slate-300 leading-relaxed mb-4 text-sm">
+                        Because DNA is inherently colourless and transparent, separating the fragments is useless unless we can see them. We achieve this using a fluorescent stain called <strong>SYBR Green</strong>.
+                    </p>
+                    
+                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 mb-4 shadow-md">
+                        <h4 class="text-sm font-semibold text-green-300 mb-2 border-b border-slate-700 pb-1">Intercalation (Sim A)</h4>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            SYBR Green possesses a flat, planar chemical structure. This shape allows it to slip completely between the stacked nitrogenous base pairs of the DNA double helix—a process known as <strong>intercalation</strong>.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-md">
+                        <h4 class="text-sm font-semibold text-green-300 mb-2 border-b border-slate-700 pb-1">Ultraviolet (UV) Activation (Sim B)</h4>
+                        <ul class="list-disc pl-4 space-y-2 text-xs text-slate-300">
+                            <li>Free-floating dye molecules in the gel do not fluoresce significantly.</li>
+                            <li>When intercalated into the rigid structure of DNA, the dye's molecular constraints change.</li>
+                            <li>Upon exposure to <strong>UV light</strong>, the bound dye absorbs the high-energy light and strongly emits a bright green fluorescence, illuminating the exact location of the separated DNA bands.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- View Routing ---
+        const views = ['view-dashboard', 'view-sim1', 'view-sim2', 'view-sim3', 'view-sim4'];
+
+        function openSim(simId) {
+            views.forEach(view => document.getElementById(view).classList.add('hidden'));
+            document.getElementById('view-' + simId).classList.remove('hidden');
+            
+            // Re-initialise Sim 1 Mesh on open
+            if(simId === 'sim1') {
+                drawMesh(document.getElementById('sim1-slider').value);
+            }
+        }
+
+        function goHome() {
+            views.forEach(view => document.getElementById(view).classList.add('hidden'));
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            
+            // Reset all interactive states upon leaving
+            document.getElementById('sim2-toggle').checked = false;
+            document.getElementById('sim2-tank').classList.remove('sim2-running');
+            
+            document.getElementById('sim3-toggle').checked = false;
+            document.getElementById('sim3-track').classList.remove('sim3-running');
+            
+            document.getElementById('sim4-toggle').checked = false;
+            document.getElementById('sim4-chamber').classList.remove('uv-on');
+        }
+
+        // --- Sim 1 Logic: Dynamic Agarose Mesh ---
+        const sim1Slider = document.getElementById('sim1-slider');
+        const concDisplay = document.getElementById('conc-display');
+        const meshSvg = document.getElementById('agarose-mesh-svg');
+
+        function drawMesh(concentration) {
+            // clear existing
+            meshSvg.innerHTML = '';
+            
+            // Calculate number of lines based on concentration (0.5 to 2.0)
+            // Base lines = 10, multiplier for higher conc.
+            const numLines = Math.floor(concentration * 30); 
+            
+            const ns = "http://www.w3.org/2000/svg";
+            
+            // Generate random bezier curves
+            for(let i=0; i<numLines; i++) {
+                const path = document.createElementNS(ns, "path");
+                
+                // Random start and end points on the edges
+                const startX = Math.random() > 0.5 ? (Math.random() * 100) : (Math.random() > 0.5 ? 0 : 100);
+                const startY = (startX === 0 || startX === 100) ? (Math.random() * 100) : (Math.random() > 0.5 ? 0 : 100);
+                
+                const endX = Math.random() * 100;
+                const endY = Math.random() * 100;
+                
+                // Control points for curve
+                const cp1X = Math.random() * 100;
+                const cp1Y = Math.random() * 100;
+                const cp2X = Math.random() * 100;
+                const cp2Y = Math.random() * 100;
+
+                const d = `M ${startX},${startY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${endX},${endY}`;
+                
+                path.setAttribute("d", d);
+                path.setAttribute("fill", "none");
+                // Thematic cyan colours
+                const strokeColours = ["#0ea5e9", "#38bdf8", "#7dd3fc", "#0284c7"];
+                path.setAttribute("stroke", strokeColours[Math.floor(Math.random() * strokeColours.length)]);
+                path.setAttribute("stroke-width", (Math.random() * 1.5 + 0.5).toString());
+                path.setAttribute("opacity", (Math.random() * 0.6 + 0.2).toString());
+                
+                meshSvg.appendChild(path);
+            }
+        }
+
+        sim1Slider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value).toFixed(1);
+            concDisplay.textContent = val + '%';
+            drawMesh(val);
+        });
+
+
+        // --- Sim 2 Logic: Electrical Current ---
+        const sim2Toggle = document.getElementById('sim2-toggle');
+        const sim2Tank = document.getElementById('sim2-tank');
+        sim2Toggle.addEventListener('change', (e) => {
+            if(e.target.checked) {
+                sim2Tank.classList.add('sim2-running');
+            } else {
+                sim2Tank.classList.remove('sim2-running');
+            }
+        });
+
+        // --- Sim 3 Logic: Size Separation ---
+        const sim3Toggle = document.getElementById('sim3-toggle');
+        const sim3Track = document.getElementById('sim3-track');
+        sim3Toggle.addEventListener('change', (e) => {
+            if(e.target.checked) {
+                sim3Track.classList.add('sim3-running');
+            } else {
+                sim3Track.classList.remove('sim3-running');
+            }
+        });
+
+        // --- Sim 4 Logic: UV Light (Effects applied via CSS class) ---
+        const sim4Toggle = document.getElementById('sim4-toggle');
+        const sim4Chamber = document.getElementById('sim4-chamber');
+        sim4Toggle.addEventListener('change', (e) => {
+            if(e.target.checked) {
+                sim4Chamber.classList.add('uv-on');
+            } else {
+                sim4Chamber.classList.remove('uv-on');
+            }
+        });
+
+    </script>
+</body>
+</html>
